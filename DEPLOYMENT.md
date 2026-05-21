@@ -104,27 +104,27 @@ WEBHOOK_SECRET=<your-secret> PYTHONPATH=. python scripts/send_test_webhook.py \
 
 ## Option B — Render (managed PaaS)
 
-Blueprint file: **`render.yaml`** at the repo root.
+| Blueprint | Cost | Use when |
+|-----------|------|----------|
+| **`render.free.yaml`** | $0 (Hobby) | Portfolio / demo — no credit card |
+| **`render.yaml`** | Paid (`starter` plans) | Production with separate workers |
+
+**Why Render asked for payment:** `render.yaml` sets `plan: starter` on 5 resources and includes **2 background workers** — workers cannot use Render’s free tier.
+
+### Free deploy (no payment)
 
 1. Push repo to GitHub
-2. In Render Dashboard → **New** → **Blueprint** → connect the repo
-3. On first deploy, set:
-   - `CORS_ORIGINS` → `https://ingestx-dashboard.onrender.com` (your static site URL)
-   - `VITE_STREAM_TOKEN` on the dashboard service → same value as `WS_AUTH_TOKEN` on the API (copy from API env after deploy)
-4. Webhook URL: `https://ingestx-api.onrender.com/api/v1/ingest`
+2. Render → **New Blueprint** → set **Blueprint Path** to `render.free.yaml`
+3. After deploy, set `CORS_ORIGINS` and `VITE_STREAM_TOKEN` (see below)
 
-**Services created by the blueprint:**
+**Free tier limits:** web spins down after 15 min idle (~1 min cold start), Postgres expires in 30 days, 1 free Redis instance, 750 instance-hours/month.
 
-| Service | Type |
-|---------|------|
-| ingestx-api | Web (Docker) |
-| ingestx-worker | Background worker |
-| ingestx-outbox-retry | Background worker |
-| ingestx-redis | Key Value (not `pserv`) |
-| ingestx-dashboard | Static site |
-| ingestx-db | PostgreSQL |
+### Paid deploy (`render.yaml`)
 
-Render Postgres URLs are normalized automatically (`postgresql://` → `postgresql+psycopg2://`).
+1. Add payment method in Render
+2. Use default Blueprint path `render.yaml`
+3. Set `CORS_ORIGINS` → `https://ingestx-dashboard.onrender.com`
+4. Set `VITE_STREAM_TOKEN` on dashboard → same as API `WS_AUTH_TOKEN`
 
 ---
 

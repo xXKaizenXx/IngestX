@@ -1,0 +1,61 @@
+# Render FREE tier Blueprint — no credit card required for Hobby workspace.
+# Tradeoff: API + worker + outbox run in ONE web container (background processes).
+# Full split architecture (separate workers) requires paid plans — see render.yaml.
+#
+# Docs: https://render.com/docs/free
+
+envVarGroups:
+  - name: ingestx-secrets
+    envVars:
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: WS_AUTH_TOKEN
+        generateValue: true
+
+services:
+  - type: web
+    name: ingestx-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: ./scripts/start-render-free.sh
+    healthCheckPath: /ready
+    plan: free
+    envVars:
+      - fromGroup: ingestx-secrets
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ingestx-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ingestx-redis
+          type: keyvalue
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_WORKERS
+        value: "1"
+      - key: RUN_DB_MIGRATIONS
+        value: "true"
+
+  - type: keyvalue
+    name: ingestx-redis
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: ingestx-dashboard
+    runtime: static
+    buildCommand: cd dashboard && npm ci && npm run build
+    staticPublishPath: ./dashboard/dist
+    envVars:
+      - key: VITE_STREAM_TOKEN
+        sync: false
+      - key: VITE_MERCHANT_ID
+        value: merchant_demo
+
+databases:
+  - name: ingestx-db
+    plan: free

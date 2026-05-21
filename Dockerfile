@@ -31,8 +31,8 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=ingestx:ingestx . .
 
-RUN sed -i 's/\r$//' scripts/entrypoint-api.sh scripts/entrypoint-worker.sh \
-    && chmod +x scripts/entrypoint-api.sh scripts/entrypoint-worker.sh
+RUN sed -i 's/\r$//' scripts/entrypoint-api.sh scripts/entrypoint-worker.sh scripts/start-render-free.sh \
+    && chmod +x scripts/entrypoint-api.sh scripts/entrypoint-worker.sh scripts/start-render-free.sh
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \

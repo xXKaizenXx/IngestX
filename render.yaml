@@ -1,5 +1,6 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
-# After deploy: set CORS_ORIGINS to https://<your-api>.onrender.com in the dashboard.
+# PAID: uses plan: starter on all services (~$7+/mo each). Requires payment method.
+# FREE: use render.free.yaml instead (no card; API+worker in one container).
 
 envVarGroups:
   - name: ingestx-secrets
