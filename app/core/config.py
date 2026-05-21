@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 INSECURE_SECRET_DEFAULTS = {
@@ -32,6 +33,17 @@ class Settings(BaseSettings):
     api_workers: int = 1
     log_level: str = "INFO"
     run_db_migrations: bool = True
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """Render Postgres provides postgresql:// — SQLAlchemy needs the psycopg2 driver."""
+        if isinstance(value, str):
+            if value.startswith("postgres://"):
+                return value.replace("postgres://", "postgresql+psycopg2://", 1)
+            if value.startswith("postgresql://") and "+psycopg2" not in value:
+                return value.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return value
 
     @property
     def is_production(self) -> bool:

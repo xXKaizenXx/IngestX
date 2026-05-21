@@ -1,10 +1,23 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# After deploy: set CORS_ORIGINS to https://<your-api>.onrender.com in the dashboard.
+
+envVarGroups:
+  - name: ingestx-secrets
+    envVars:
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: WS_AUTH_TOKEN
+        generateValue: true
+
 services:
   - type: web
     name: ingestx-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /ready
+    plan: starter
     envVars:
+      - fromGroup: ingestx-secrets
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
@@ -14,22 +27,46 @@ services:
       - key: REDIS_URL
         fromService:
           name: ingestx-redis
-          type: redis
+          type: keyvalue
           property: connectionString
-      - key: WEBHOOK_SECRET
-        generateValue: true
-      - key: WS_AUTH_TOKEN
-        generateValue: true
       - key: CORS_ORIGINS
         sync: false
       - key: API_WORKERS
         value: "2"
+      - key: RUN_DB_MIGRATIONS
+        value: "true"
 
   - type: worker
     name: ingestx-worker
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerCommand: ./scripts/entrypoint-worker.sh
+    plan: starter
+    envVars:
+      - fromGroup: ingestx-secrets
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ingestx-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ingestx-redis
+          type: keyvalue
+          property: connectionString
+      - key: RUN_DB_MIGRATIONS
+        value: "false"
+
+  - type: worker
+    name: ingestx-outbox-retry
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: >
+      sh -c "python scripts/wait_for_services.py &&
+      while true; do python -c 'from workers.tasks import retry_outbox_events; retry_outbox_events()';
+      sleep 30; done"
+    plan: starter
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -40,15 +77,28 @@ services:
       - key: REDIS_URL
         fromService:
           name: ingestx-redis
-          type: redis
+          type: keyvalue
           property: connectionString
       - key: RUN_DB_MIGRATIONS
         value: "false"
 
-  - type: pserv
+  # Render Key Value (Valkey) — NOT type: pserv
+  - type: keyvalue
     name: ingestx-redis
     plan: starter
     ipAllowList: []
+
+  - type: web
+    name: ingestx-dashboard
+    runtime: static
+    buildCommand: cd dashboard && npm ci && npm run build
+    staticPublishPath: ./dashboard/dist
+    envVars:
+      # After first deploy, set this to the same value as WS_AUTH_TOKEN on ingestx-api
+      - key: VITE_STREAM_TOKEN
+        sync: false
+      - key: VITE_MERCHANT_ID
+        value: merchant_demo
 
 databases:
   - name: ingestx-db

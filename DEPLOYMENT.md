@@ -104,16 +104,27 @@ WEBHOOK_SECRET=<your-secret> PYTHONPATH=. python scripts/send_test_webhook.py \
 
 ## Option B — Render (managed PaaS)
 
-A starter blueprint lives in `deploy/render.yaml`.
+Blueprint file: **`render.yaml`** at the repo root.
 
 1. Push repo to GitHub
-2. Create a **Render Blueprint** from `deploy/render.yaml`
-3. Set `CORS_ORIGINS` to your Render dashboard URL
-4. **Note:** Render's Postgres URL uses `postgres://` — prepend the driver:
-   ```
-   postgresql+psycopg2://user:pass@host/db
-   ```
-5. Deploy the dashboard separately (Render Static Site or Docker) and set `VITE_*` build args
+2. In Render Dashboard → **New** → **Blueprint** → connect the repo
+3. On first deploy, set:
+   - `CORS_ORIGINS` → `https://ingestx-dashboard.onrender.com` (your static site URL)
+   - `VITE_STREAM_TOKEN` on the dashboard service → same value as `WS_AUTH_TOKEN` on the API (copy from API env after deploy)
+4. Webhook URL: `https://ingestx-api.onrender.com/api/v1/ingest`
+
+**Services created by the blueprint:**
+
+| Service | Type |
+|---------|------|
+| ingestx-api | Web (Docker) |
+| ingestx-worker | Background worker |
+| ingestx-outbox-retry | Background worker |
+| ingestx-redis | Key Value (not `pserv`) |
+| ingestx-dashboard | Static site |
+| ingestx-db | PostgreSQL |
+
+Render Postgres URLs are normalized automatically (`postgresql://` → `postgresql+psycopg2://`).
 
 ---
 
