@@ -1,0 +1,96 @@
+name: ingestx-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ingestx
+      POSTGRES_PASSWORD: ingestx
+      POSTGRES_DB: ingestx
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ingestx"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg2://ingestx:ingestx@postgres:5432/ingestx
+      REDIS_URL: redis://redis:6379/0
+      WEBHOOK_SECRET: whsec_test_change_in_production
+      WS_AUTH_TOKEN: dev-stream-token-change-me
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg2://ingestx:ingestx@postgres:5432/ingestx
+      REDIS_URL: redis://redis:6379/0
+      WEBHOOK_SECRET: whsec_test_change_in_production
+      RUN_DB_MIGRATIONS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: rq worker webhook_events --url redis://redis:6379/0
+
+  outbox-retry:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ingestx:ingestx@postgres:5432/ingestx
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "while true; do
+        python -c 'from workers.tasks import retry_outbox_events; retry_outbox_events()';
+        sleep 30;
+      done"
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        VITE_STREAM_TOKEN: dev-stream-token-change-me
+        VITE_MERCHANT_ID: merchant_demo
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  dev_pgdata:

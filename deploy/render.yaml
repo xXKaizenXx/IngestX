@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: ingestx-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /ready
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ingestx-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ingestx-redis
+          type: redis
+          property: connectionString
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: WS_AUTH_TOKEN
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_WORKERS
+        value: "2"
+
+  - type: worker
+    name: ingestx-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: ./scripts/entrypoint-worker.sh
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ingestx-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ingestx-redis
+          type: redis
+          property: connectionString
+      - key: RUN_DB_MIGRATIONS
+        value: "false"
+
+  - type: pserv
+    name: ingestx-redis
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: ingestx-db
+    plan: starter

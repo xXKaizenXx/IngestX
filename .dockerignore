@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+.env.production
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+*.db
+pgdata/
+
+# Dashboard
+dashboard/node_modules/
+dashboard/dist/
+
+# Docker
+.docker/
+
+# IDE
+.idea/
+.vscode/

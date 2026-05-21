@@ -1,0 +1,17 @@
+{
+  email {$ACME_EMAIL}
+}
+
+# TLS site — set DOMAIN=ingestx.yourdomain.com in .env.production
+{$DOMAIN} {
+  encode gzip
+
+  @api path /api/* /health /ready
+  handle @api {
+    reverse_proxy api:8000
+  }
+
+  handle {
+    reverse_proxy dashboard:80
+  }
+}
